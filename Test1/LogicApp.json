@@ -1,0 +1,253 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "uksouth",
+        "ukwest",
+        "westcentralus",
+        "westus2",
+        "koreacentral",
+        "koreasouth",
+        "francecentral",
+        "francesouth",
+        "uaecentral",
+        "uaenorth",
+        "southafricanorth",
+        "southafricawest",
+        "switzerlandnorth",
+        "switzerlandwest",
+        "germanynorth",
+        "germanywestcentral",
+        "norwaywest",
+        "norwayeast",
+        "brazilsoutheast",
+        "westus3"
+      ],
+      "metadata": {
+        "description": "Location of the Logic App."
+      }
+    },
+    "sql_1_Connection_Name": {
+      "type": "string",
+      "defaultValue": "sql-3"
+    },
+    "sql_1_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "SQL-Amigo"
+    },
+    "sql_1_server": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL server name"
+      }
+    },
+    "sql_1_database": {
+      "type": "string",
+      "metadata": {
+        "description": "SQL database name"
+      }
+    },
+    "sql_1_username": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Username credential"
+      }
+    },
+    "sql_1_password": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password credential"
+      }
+    },
+    "sql_1_encryptConnection": {
+      "type": "bool",
+      "metadata": {
+        "description": "Encrypt Connection"
+      }
+    },
+    "sql_1_privacySetting": {
+      "type": "string",
+      "metadata": {
+        "description": "Privacy Setting"
+      },
+      "allowedValues": [
+        "None",
+        "Private",
+        "Organizational",
+        "Public"
+      ]
+    },
+    "sql_1_sqlConnectionString": {
+      "type": "securestring",
+      "metadata": {
+        "description": "SQL Connection String"
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[parameters('logicAppName')]",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "tags": {
+        "displayName": "LogicApp"
+      },
+      "apiVersion": "2016-06-01",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "Execute_stored_procedure_(V2)": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['sql']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "body": {
+                  "BSESIID": "@triggerBody()?['BSESIID']",
+                  "BSESIID_Months": "@triggerBody()?['BSESIID_Months']",
+                  "Email": "@triggerBody()?['Email']",
+                  "LastName": "@triggerBody()?['LastName']",
+                  "Phone": "@triggerBody()?['Phone']",
+                  "PII_Months": "@triggerBody()?['PII_Months']",
+                  "SSN": "@triggerBody()?['SSN']"
+                },
+                "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('je-dev-baddebt.database.windows.net'))},@{encodeURIComponent(encodeURIComponent('AmigoBD'))}/procedures/@{encodeURIComponent(encodeURIComponent('[dbo].[Get_Customer_Payments]'))}"
+              },
+              "runAfter": {}
+            },
+            "Response": {
+              "type": "Response",
+              "kind": "http",
+              "inputs": {
+                "statusCode": 200,
+                "body": "@body('Execute_stored_procedure_(V2)')?['resultsets']?['Table1']"
+              },
+              "runAfter": {
+                "Execute_stored_procedure_(V2)": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "properties": {
+                    "BSESIID": {
+                      "type": "string"
+                    },
+                    "BSESIID_Months": {
+                      "type": "string"
+                    },
+                    "Email": {
+                      "type": "string"
+                    },
+                    "LastName": {
+                      "type": "string"
+                    },
+                    "PII_Months": {
+                      "type": "string"
+                    },
+                    "Phone": {
+                      "type": "string"
+                    },
+                    "SSN": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "method": "POST"
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "sql": {
+                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'sql')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('sql_1_Connection_Name'))]",
+                "connectionName": "[parameters('sql_1_Connection_Name')]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', parameters('sql_1_Connection_Name'))]"
+      ]
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2018-07-01-preview",
+      "name": "[parameters('sql_1_Connection_Name')]",
+      "location": "[parameters('logicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'sql')]"
+        },
+        "displayName": "[parameters('sql_1_Connection_DisplayName')]",
+        "parameterValues": {
+          "server": "[parameters('sql_1_server')]",
+          "database": "[parameters('sql_1_database')]",
+          "username": "[parameters('sql_1_username')]",
+          "password": "[parameters('sql_1_password')]",
+          "encryptConnection": "[parameters('sql_1_encryptConnection')]",
+          "privacySetting": "[parameters('sql_1_privacySetting')]",
+          "sqlConnectionString": "[parameters('sql_1_sqlConnectionString')]"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
